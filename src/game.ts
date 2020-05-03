@@ -1,47 +1,126 @@
-import 'phaser';
+import "phaser";
+import IsoPlugin from "phaser3-plugin-isometric";
+import {
+  TiledJSONMap,
+  TiledJSONTileset,
+  TiledJSONTilesetTile,
+  Point,
+} from "./types";
 
-export default class Demo extends Phaser.Scene
-{
-    constructor ()
-    {
-        super('demo');
+import _ from "lodash";
+
+const PX_SCALE = 3;
+
+export default class Demo extends Phaser.Scene {
+  private dragOrigin: Point | null = null;
+
+  constructor() {
+    super("demo");
+  }
+
+  preload() {
+    this.load.image("logo", "assets/phaser3-logo.png");
+    this.load.image("libs", "assets/libs.png");
+
+    this.load.json("map", "assets/tiled/map.json");
+    this.load.json("tiles", "assets/tiled/impira_tiles/impira.json");
+
+    this.load.scenePlugin({
+      key: "IsoPlugin",
+      url: IsoPlugin,
+      sceneKey: "iso",
+    });
+
+    this.load.on("filecomplete", (key: string) => {
+      console.log("filecomplete", key);
+      if (key === "tiles") {
+        var data: TiledJSONTileset = this.cache.json.get("tiles");
+        data.tiles.map((tile) => {
+          this.load.image(
+            `tile-${tile.image}`,
+            `assets/tiled/impira_tiles/${tile.image}`
+          );
+        });
+      }
+    });
+  }
+
+  create() {
+    this.buildIsoMap();
+  }
+
+  update() {
+    if (this.game.input.activePointer.isDown) {
+      if (this.dragOrigin) {
+        // move the camera by the amount the mouse has moved since last update
+        const { x: ox, y: oy } = this.dragOrigin;
+        const { x: px, y: py } = this.game.input.activePointer.position;
+        this.cameras.main.scrollX += ox - px;
+        this.cameras.main.scrollY += oy - py;
+      } // set new drag origin to current position
+      this.dragOrigin = this.game.input.activePointer.position.clone();
+    } else {
+      this.dragOrigin = null;
     }
+  }
 
-    preload ()
-    {
-        this.load.image('logo', 'assets/phaser3-logo.png');
-        this.load.image('libs', 'assets/libs.png');
-        this.load.glsl('bundle', 'assets/plasma-bundle.glsl.js');
-        this.load.glsl('stars', 'assets/starfields.glsl.js');
-    }
+  private buildIsoMap() {
+    var map: TiledJSONMap = this.cache.json.get("map");
+    var tiles: TiledJSONTileset = this.cache.json.get("tiles");
 
-    create ()
-    {
-        this.add.shader('RGB Shift Field', 0, 0, 800, 600).setOrigin(0);
+    const tileWidth = map.tilewidth * PX_SCALE;
+    const tileHeight = map.tileheight * PX_SCALE;
 
-        this.add.shader('Plasma', 0, 412, 800, 172).setOrigin(0);
+    const tileDefinitions: { [id: number]: TiledJSONTilesetTile } = {};
+    tiles.tiles.map((tile) => {
+      tileDefinitions[tile.id] = tile;
+    });
 
-        this.add.image(400, 300, 'libs');
+    // var centerX = (map.width * tileWidth) / 2;
+    var centerX = 400;
+    var centerY = 16;
 
-        const logo = this.add.image(400, 70, 'logo');
+    _.range(0, map.width).map((x) => {
+      _.range(0, map.height).map((y) => {
+        map.layers.map((layer) => {
+          var tx = (x - y) * (tileWidth / 2);
+          var ty = (x + y) * (tileHeight / 2);
 
-        this.tweens.add({
-            targets: logo,
-            y: 350,
-            duration: 1500,
-            ease: 'Sine.inOut',
-            yoyo: true,
-            repeat: -1
-        })
-    }
+          if (
+            x >= layer.x &&
+            x < layer.x + layer.width &&
+            y >= layer.y &&
+            y < layer.y + layer.height
+          ) {
+            const tileId = layer.data[y * layer.width + x];
+
+            if (tileId !== 0) {
+              const tile = tileDefinitions[tileId - 1];
+              const img = this.add.image(
+                centerX + tx,
+                centerY + ty,
+                `tile-${tile.image}`
+              );
+              img.setOrigin(0, 1);
+              img.depth = centerY + ty;
+              img.scale = PX_SCALE;
+            }
+          }
+        });
+      });
+    });
+  }
 }
 
-const config = {
-    type: Phaser.AUTO,
-    backgroundColor: '#125555',
-    width: 800,
-    height: 600,
-    scene: Demo
+const config: Phaser.Types.Core.GameConfig = {
+  type: Phaser.AUTO,
+  backgroundColor: "#125555",
+  width: 800,
+  height: 600,
+  render: {
+    pixelArt: true,
+  },
+  scene: Demo,
 };
 
 const game = new Phaser.Game(config);

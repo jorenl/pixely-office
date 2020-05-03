@@ -5,9 +5,13 @@ Thumbs.db
 *.suo
 *.sublime-project
 *.sublime-workspace
+.vscode
 
 # Vendors
 node_modules/
 
 # Build
 /npm-debug.log
+
+# Tileset (during development at least)
+dist/assets/tiled/
