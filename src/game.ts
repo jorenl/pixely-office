@@ -1,5 +1,5 @@
 import "phaser";
-import IsoPlugin from "phaser3-plugin-isometric";
+import IsoPlugin, { IsoObj, WithIsoSpriteFn } from "phaser3-plugin-isometric";
 import {
   TiledJSONMap,
   TiledJSONTileset,
@@ -10,12 +10,19 @@ import {
 import _ from "lodash";
 
 const PX_SCALE = 3;
+const TILE = 16;
 
 export default class Demo extends Phaser.Scene {
   private dragOrigin: Point | null = null;
 
+  // These hacky declarations specify how IsoPlugin extends the scene:
+  public declare add: Phaser.GameObjects.GameObjectFactory & WithIsoSpriteFn;
+  public declare iso: IsoObj;
+
+  private cursor: Phaser.GameObjects.Polygon;
+
   constructor() {
-    super("demo");
+    super({ key: "demo", mapAdd: { isoPlugin: "iso" } });
   }
 
   preload() {
@@ -24,6 +31,11 @@ export default class Demo extends Phaser.Scene {
 
     this.load.json("map", "assets/tiled/map.json");
     this.load.json("tiles", "assets/tiled/impira_tiles/impira.json");
+
+    this.load.spritesheet("dude", "assets/sprites/dude_32x55.png", {
+      frameWidth: 32,
+      frameHeight: 55,
+    });
 
     this.load.scenePlugin({
       key: "IsoPlugin",
@@ -46,7 +58,48 @@ export default class Demo extends Phaser.Scene {
   }
 
   create() {
+    // Set the origin of the isometric projection to the mid top of the screen
+    this.iso.projector.origin.setTo(0.5, 0.1);
+    // override the projection to be exactly 2:1
+    this.iso.projector._transform = [1, 0.5];
+
     this.buildIsoMap();
+
+    const dude = this.add.isoSprite(
+      25 * PX_SCALE * TILE,
+      25 * PX_SCALE * TILE,
+      1,
+      "dude",
+      undefined,
+      6
+    );
+    dude.setOrigin(0, 58 / 55); // 3px below bottom edge of sprite
+    dude.scale = 3;
+
+    this.input.on("pointerdown", () => {
+      console.log("pointerdown");
+      const clickPos = this.game.input.activePointer.position;
+      const clickPosIso = this.iso.projector.unproject(clickPos);
+      const { x, y } = this.snapToIsoGrid(clickPosIso);
+      dude.isoX = x;
+      dude.isoY = y;
+      console.log(dude.isoX, dude.isoY);
+    });
+
+    const c = this.add.polygon(dude.x, dude.y, [
+      [0 * PX_SCALE, 8 * PX_SCALE],
+      [16 * PX_SCALE, 16 * PX_SCALE],
+      [32 * PX_SCALE, 8 * PX_SCALE],
+      [16 * PX_SCALE, 0 * PX_SCALE],
+    ]);
+    c.closePath = true;
+    c.depth = 9999;
+    c.isFilled = false;
+    c.isStroked = true;
+    c.lineWidth = 2;
+    c.strokeColor = 0;
+    c.setOrigin(0, 1);
+    this.cursor = c;
   }
 
   update() {
@@ -62,6 +115,20 @@ export default class Demo extends Phaser.Scene {
     } else {
       this.dragOrigin = null;
     }
+
+    // update cursor
+    const mousePos = this.game.input.activePointer.position;
+    const mousePosIso = this.iso.projector.unproject(mousePos);
+    const { x: isoX, y: isoY } = this.snapToIsoGrid(mousePosIso);
+    const { x, y } = this.iso.projector.project({ x: isoX, y: isoY, z: 0 });
+    this.cursor.setPosition(x, y);
+  }
+
+  private snapToIsoGrid({ x, y }: Point): Point {
+    return {
+      x: Math.round(x / (PX_SCALE * TILE)) * (PX_SCALE * TILE),
+      y: Math.round(y / (PX_SCALE * TILE) + 1) * (PX_SCALE * TILE),
+    };
   }
 
   private buildIsoMap() {
@@ -96,14 +163,27 @@ export default class Demo extends Phaser.Scene {
 
             if (tileId !== 0) {
               const tile = tileDefinitions[tileId - 1];
-              const img = this.add.image(
-                centerX + tx,
-                centerY + ty,
+
+              // this.add.group;
+
+              const sprite = this.add.isoSprite(
+                x * TILE * PX_SCALE,
+                y * TILE * PX_SCALE,
+                0,
                 `tile-${tile.image}`
               );
-              img.setOrigin(0, 1);
-              img.depth = centerY + ty;
-              img.scale = PX_SCALE;
+
+              sprite.scale = PX_SCALE;
+              sprite.setOrigin(0, 1);
+
+              // const img = this.add.image(
+              //   centerX + tx,
+              //   centerY + ty,
+              //   `tile-${tile.image}`
+              // );
+              // img.setOrigin(0, 1);
+              // img.depth = centerY + ty;
+              // img.scale = PX_SCALE;
             }
           }
         });
