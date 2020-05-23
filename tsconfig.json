@@ -1,8 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "moduleResolution": "node",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "jsx": "react",
+    "baseUrl": "./",
+    "sourceMap": true,
+    "noImplicitAny": true
   },
-  "include": ["./src/**/*"]
+  "include": ["server/**/*.ts*", "client/**/*.ts*"]
 }
