@@ -56,6 +56,8 @@ export class IsoPos {
   private y: number;
   private z: number;
 
+  public depthOffset: number = 0;
+
   constructor(parent: PositionableGameObject) {
     this.parent = parent;
   }
@@ -67,7 +69,7 @@ export class IsoPos {
     const p = project({ x, y, z });
     this.parent.x = p.x;
     this.parent.y = p.y;
-    this.parent.depth = p.depth;
+    this.parent.depth = p.depth + this.depthOffset;
   }
 
   public pos(): Point3 {

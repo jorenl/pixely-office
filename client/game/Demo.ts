@@ -65,7 +65,7 @@ export default class Demo extends Phaser.Scene {
       const mousePos = this.game.input.activePointer.position;
       const clickPosIso = unproject(this, mousePos, 0);
       const snapped = snapToIsoGrid(clickPosIso);
-      this.player.iso.goto(snapped);
+      this.player.path.push(snapped);
     });
 
     this.cursor = new Cursor(this, this.player.x, this.player.y);
@@ -87,6 +87,7 @@ export default class Demo extends Phaser.Scene {
     }
 
     this.cursor.update();
+    this.player.update();
   }
 
   private buildIsoMap() {
@@ -117,11 +118,13 @@ export default class Demo extends Phaser.Scene {
 
             if (tileId !== 0) {
               const tileDef = tileDefinitions[tileId - 1];
+              const depthOffset = layer.name === "floor" ? -64 : 0;
               const tile = new Tile(
                 this,
                 x * TILE * PX_SCALE,
                 y * TILE * PX_SCALE,
-                `tile-${tileDef.image}`
+                `tile-${tileDef.image}`,
+                depthOffset
               );
               this.add.existing(tile);
             }
