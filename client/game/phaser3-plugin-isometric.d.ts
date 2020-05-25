@@ -36,7 +36,15 @@ declare module "phaser3-plugin-isometric" {
     project(point: { x: number; y: number; z: number }, out?: Point3): Point3;
   }
 
-  class IsoSprite extends Phaser.GameObjects.Sprite {
+  export class IsoSprite extends Phaser.GameObjects.Sprite {
+    constructor(
+      scene: Phaser.Scene,
+      x: number,
+      y: number,
+      z: number,
+      texture: string,
+      frame: number
+    );
     get isoX(): number;
     set isoX(value: number);
     get isoY(): number;

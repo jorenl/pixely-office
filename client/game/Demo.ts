@@ -1,5 +1,4 @@
 import "phaser";
-import IsoPlugin, { IsoObj, WithIsoSpriteFn } from "phaser3-plugin-isometric";
 import {
   TiledJSONMap,
   TiledJSONTileset,
@@ -8,21 +7,20 @@ import {
 } from "./types";
 
 import range from "lodash/range";
-
-const PX_SCALE = 3;
-const TILE = 16;
+import Player from "./Player";
+import { PX_SCALE, TILE } from "./consts";
+import { Cursor } from "./Cursor";
+import { Tile } from "./Tile";
+import { unproject, snapToIsoGrid } from "./iso";
 
 export default class Demo extends Phaser.Scene {
   private dragOrigin: Point | null = null;
 
-  // These hacky declarations specify how IsoPlugin extends the scene:
-  public declare add: Phaser.GameObjects.GameObjectFactory & WithIsoSpriteFn;
-  public declare iso: IsoObj;
-
   private cursor: Phaser.GameObjects.Polygon;
+  private player: Player;
 
   constructor() {
-    super({ key: "demo", mapAdd: { isoPlugin: "iso" } });
+    super({ key: "demo", mapAdd: {} });
   }
 
   preload() {
@@ -35,12 +33,6 @@ export default class Demo extends Phaser.Scene {
     this.load.spritesheet("dude", "assets/sprites/dude_32x55.png", {
       frameWidth: 32,
       frameHeight: 55,
-    });
-
-    this.load.scenePlugin({
-      key: "IsoPlugin",
-      url: IsoPlugin,
-      sceneKey: "iso",
     });
 
     this.load.on("filecomplete", (key: string) => {
@@ -58,48 +50,26 @@ export default class Demo extends Phaser.Scene {
   }
 
   create() {
-    // Set the origin of the isometric projection to the mid top of the screen
-    this.iso.projector.origin.setTo(0.5, 0.1);
-    // override the projection to be exactly 2:1
-    this.iso.projector._transform = [1, 0.5];
-
     this.buildIsoMap();
 
-    const dude = this.add.isoSprite(
+    this.player = new Player(
+      this,
       25 * PX_SCALE * TILE,
       25 * PX_SCALE * TILE,
-      1,
-      "dude",
-      undefined,
-      6
+      1
     );
-    dude.setOrigin(0, 58 / 55); // 3px below bottom edge of sprite
-    dude.scale = 3;
+    this.add.existing(this.player);
 
     this.input.on("pointerdown", () => {
       console.log("pointerdown");
-      const clickPos = this.game.input.activePointer.position;
-      const clickPosIso = this.iso.projector.unproject(clickPos);
-      const { x, y } = this.snapToIsoGrid(clickPosIso);
-      dude.isoX = x;
-      dude.isoY = y;
-      console.log(dude.isoX, dude.isoY);
+      const mousePos = this.game.input.activePointer.position;
+      const clickPosIso = unproject(this, mousePos, 0);
+      const snapped = snapToIsoGrid(clickPosIso);
+      this.player.iso.goto(snapped);
     });
 
-    const c = this.add.polygon(dude.x, dude.y, [
-      [0 * PX_SCALE, 8 * PX_SCALE],
-      [16 * PX_SCALE, 16 * PX_SCALE],
-      [32 * PX_SCALE, 8 * PX_SCALE],
-      [16 * PX_SCALE, 0 * PX_SCALE],
-    ]);
-    c.closePath = true;
-    c.depth = 9999;
-    c.isFilled = false;
-    c.isStroked = true;
-    c.lineWidth = 2;
-    c.strokeColor = 0;
-    c.setOrigin(0, 1);
-    this.cursor = c;
+    this.cursor = new Cursor(this, this.player.x, this.player.y);
+    this.add.existing(this.cursor);
   }
 
   update() {
@@ -116,19 +86,7 @@ export default class Demo extends Phaser.Scene {
       this.dragOrigin = null;
     }
 
-    // update cursor
-    const mousePos = this.game.input.activePointer.position;
-    const mousePosIso = this.iso.projector.unproject(mousePos);
-    const { x: isoX, y: isoY } = this.snapToIsoGrid(mousePosIso);
-    const { x, y } = this.iso.projector.project({ x: isoX, y: isoY, z: 0 });
-    this.cursor.setPosition(x, y);
-  }
-
-  private snapToIsoGrid({ x, y }: Point): Point {
-    return {
-      x: Math.round(x / (PX_SCALE * TILE)) * (PX_SCALE * TILE),
-      y: Math.round(y / (PX_SCALE * TILE) + 1) * (PX_SCALE * TILE),
-    };
+    this.cursor.update();
   }
 
   private buildIsoMap() {
@@ -142,10 +100,6 @@ export default class Demo extends Phaser.Scene {
     tiles.tiles.map((tile) => {
       tileDefinitions[tile.id] = tile;
     });
-
-    // var centerX = (map.width * tileWidth) / 2;
-    var centerX = 400;
-    var centerY = 16;
 
     range(0, map.width).map((x) => {
       range(0, map.height).map((y) => {
@@ -162,28 +116,14 @@ export default class Demo extends Phaser.Scene {
             const tileId = layer.data[y * layer.width + x];
 
             if (tileId !== 0) {
-              const tile = tileDefinitions[tileId - 1];
-
-              // this.add.group;
-
-              const sprite = this.add.isoSprite(
+              const tileDef = tileDefinitions[tileId - 1];
+              const tile = new Tile(
+                this,
                 x * TILE * PX_SCALE,
                 y * TILE * PX_SCALE,
-                0,
-                `tile-${tile.image}`
+                `tile-${tileDef.image}`
               );
-
-              sprite.scale = PX_SCALE;
-              sprite.setOrigin(0, 1);
-
-              // const img = this.add.image(
-              //   centerX + tx,
-              //   centerY + ty,
-              //   `tile-${tile.image}`
-              // );
-              // img.setOrigin(0, 1);
-              // img.depth = centerY + ty;
-              // img.scale = PX_SCALE;
+              this.add.existing(tile);
             }
           }
         });
