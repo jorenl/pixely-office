@@ -8,14 +8,14 @@ import {
 
 import range from "lodash/range";
 import Player from "./Player";
-import { PX_SCALE, TILE } from "./consts";
+import { PX_SCALE, TILE, DRAG_THRESHOLD } from "./consts";
 import { Cursor } from "./Cursor";
 import { Tile } from "./Tile";
 import { unproject, snapToIsoGrid } from "./iso";
 
-export default class Demo extends Phaser.Scene {
-  private dragOrigin: Point | null = null;
+const distanceBetweenPoints = Phaser.Math.Distance.BetweenPoints;
 
+export default class Demo extends Phaser.Scene {
   private cursor: Phaser.GameObjects.Polygon;
   private player: Player;
 
@@ -60,32 +60,49 @@ export default class Demo extends Phaser.Scene {
     );
     this.add.existing(this.player);
 
-    this.input.on("pointerdown", () => {
-      console.log("pointerdown");
-      const mousePos = this.game.input.activePointer.position;
-      const clickPosIso = unproject(this, mousePos, 0);
-      const snapped = snapToIsoGrid(clickPosIso);
-      this.player.path.push(snapped);
-    });
-
     this.cursor = new Cursor(this, this.player.x, this.player.y);
     this.add.existing(this.cursor);
+
+    this.input.on("pointerdown", () => {
+      let dragging = false;
+      const pointerDownPos = this.game.input.activePointer.position.clone();
+      const pointerDownScrollX = this.cameras.main.scrollX;
+      const pointerDownScrollY = this.cameras.main.scrollY;
+
+      const onPointerMove = () => {
+        const pointerPos = this.game.input.activePointer.position;
+        if (
+          !dragging &&
+          distanceBetweenPoints(pointerDownPos, pointerPos) > DRAG_THRESHOLD
+        ) {
+          dragging = true;
+        }
+        if (dragging) {
+          this.cameras.main.setScroll(
+            pointerDownScrollX + (pointerDownPos.x - pointerPos.x),
+            pointerDownScrollY + (pointerDownPos.y - pointerPos.y)
+          );
+        }
+      };
+
+      const onPointerUp = () => {
+        const pointerPos = this.game.input.activePointer.position;
+        if (!dragging) {
+          // handle click
+          console.log("pointerup as click");
+          const clickPosIso = unproject(this, pointerPos, 0);
+          const snapped = snapToIsoGrid(clickPosIso);
+          this.player.path.push(snapped);
+        }
+        this.input.off("pointermove", onPointerMove);
+        this.input.off("pointerup", onPointerUp);
+      };
+      this.input.on("pointermove", onPointerMove);
+      this.input.on("pointerup", onPointerUp);
+    });
   }
 
   update() {
-    if (this.game.input.activePointer.isDown) {
-      if (this.dragOrigin) {
-        // move the camera by the amount the mouse has moved since last update
-        const { x: ox, y: oy } = this.dragOrigin;
-        const { x: px, y: py } = this.game.input.activePointer.position;
-        this.cameras.main.scrollX += ox - px;
-        this.cameras.main.scrollY += oy - py;
-      } // set new drag origin to current position
-      this.dragOrigin = this.game.input.activePointer.position.clone();
-    } else {
-      this.dragOrigin = null;
-    }
-
     this.cursor.update();
     this.player.update();
   }
