@@ -1,13 +1,12 @@
-export type Message = ChatMessage | UserJoinedMessage;
+import { Action } from "shared/store";
 
-interface BaseMessage {
-  sender: string;
-}
+export type Message =
+  | UserJoinedMessage
+  | UserLeftMessage
+  | ReduxActionMessage
+  | RequestGameStateMessage;
 
-interface ChatMessage extends BaseMessage {
-  type: "CHAT";
-  text: string;
-}
+interface BaseMessage {}
 
 interface UserJoinedMessage extends BaseMessage {
   type: "USER_JOINED";
@@ -19,4 +18,13 @@ interface UserLeftMessage extends BaseMessage {
   type: "USER_LEFT";
   uid: string;
   username: string;
+}
+
+interface ReduxActionMessage extends BaseMessage {
+  type: "REDUX_ACTION";
+  action: Action;
+}
+
+interface RequestGameStateMessage extends BaseMessage {
+  type: "REQUEST_GAME_STATE";
 }

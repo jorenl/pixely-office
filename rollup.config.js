@@ -42,7 +42,10 @@ export default {
 
     commonjs({
       include: ["node_modules/**"],
-      exclude: ["node_modules/phaser/src/polyfills/requestAnimationFrame.js"],
+      exclude: [
+        "node_modules/phaser/src/polyfills/requestAnimationFrame.js",
+        "node_modules/symbol-observable/es/*.js",
+      ],
       sourceMap: true,
       ignoreGlobal: true,
     }),

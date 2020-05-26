@@ -12,12 +12,17 @@ import { PX_SCALE, TILE, DRAG_THRESHOLD } from "./consts";
 import { Cursor } from "./Cursor";
 import { Tile } from "./Tile";
 import { unproject, snapToIsoGrid } from "./iso";
+import store, { observeStore, dispatchAndSend, getState } from "./store";
 
 const distanceBetweenPoints = Phaser.Math.Distance.BetweenPoints;
 
 export default class Demo extends Phaser.Scene {
   private cursor: Phaser.GameObjects.Polygon;
-  private player: Player;
+  // private player: Player;
+
+  private playersGroup: Phaser.GameObjects.Group;
+  private playersByUid: { [uid: string]: Player };
+  private activePlayer: Player;
 
   constructor() {
     super({ key: "demo", mapAdd: {} });
@@ -52,15 +57,10 @@ export default class Demo extends Phaser.Scene {
   create() {
     this.buildIsoMap();
 
-    this.player = new Player(
-      this,
-      25 * PX_SCALE * TILE,
-      25 * PX_SCALE * TILE,
-      1
-    );
-    this.add.existing(this.player);
+    this.playersGroup = this.add.group([], { runChildUpdate: true });
+    this.playersByUid = {};
 
-    this.cursor = new Cursor(this, this.player.x, this.player.y);
+    this.cursor = new Cursor(this, 0, 0);
     this.add.existing(this.cursor);
 
     this.input.on("pointerdown", () => {
@@ -89,10 +89,16 @@ export default class Demo extends Phaser.Scene {
         const pointerPos = this.game.input.activePointer.position;
         if (!dragging) {
           // handle click
-          console.log("pointerup as click");
           const clickPosIso = unproject(this, pointerPos, 0);
           const snapped = snapToIsoGrid(clickPosIso);
-          this.player.path.push(snapped);
+          console.log("pointerup as click", snapped);
+
+          dispatchAndSend({
+            type: "MOVE_PLAYER",
+            uid: this.activePlayer.uid,
+            x: snapped.x,
+            y: snapped.y,
+          });
         }
         this.input.off("pointermove", onPointerMove);
         this.input.off("pointerup", onPointerUp);
@@ -100,11 +106,40 @@ export default class Demo extends Phaser.Scene {
       this.input.on("pointermove", onPointerMove);
       this.input.on("pointerup", onPointerUp);
     });
+
+    const unsub = observeStore(
+      store,
+      (s) => s.players,
+      (playersState) => {
+        const uids = new Set<string>();
+        playersState.forEach((playerState) => {
+          uids.add(playerState.uid);
+          // create player if it does not exist
+          if (!this.playersByUid[playerState.uid]) {
+            const sprite = new Player(this, playerState.uid);
+            this.playersGroup.add(sprite, true);
+            this.playersByUid[playerState.uid] = sprite;
+          }
+        });
+        Object.keys(this.playersByUid).map((uid) => {
+          if (!uids.has(uid)) {
+            // remove player, it's no longer in state
+            const sprite = this.playersByUid[uid];
+            this.playersGroup.remove(sprite, true, true);
+          }
+        });
+
+        if (!this.activePlayer) {
+          this.activePlayer = this.playersByUid[getState().activePlayer];
+        }
+      }
+    );
+    this.events.on(Phaser.Scenes.Events.DESTROY, unsub);
   }
 
   update() {
     this.cursor.update();
-    this.player.update();
+    // this.player.update();
   }
 
   private buildIsoMap() {

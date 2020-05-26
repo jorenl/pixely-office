@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { IsoPos } from "./iso";
 import { Point } from "./types";
 import { PX_SCALE, TILE } from "./consts";
+import store, { observeStore } from "./store";
 
 const STEP = 2;
 
@@ -12,17 +13,42 @@ export default class Player extends Phaser.GameObjects.Sprite {
 
   private badge: Phaser.GameObjects.Text;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, z: number) {
+  public uid: string;
+
+  constructor(scene: Phaser.Scene, uid: string) {
     super(scene, 0, 0, "dude", 6);
     this.iso = new IsoPos(this);
-    this.iso.goto({ x, y, z });
+
+    this.uid = uid;
 
     this.setOrigin(0, 58 / 55); // 3px below bottom edge of sprite
     this.scale = 3;
 
-    this.badge = this.scene.add.text(0, 0, "mandrews");
+    this.badge = this.scene.add.text(0, 0, "");
     this.badge.setShadow(1, 1, "#000", 0, false, true);
     this.badge.depth = 9999;
+
+    const unsub = observeStore(
+      store,
+      (s) => s.players.find((p) => p.uid === this.uid),
+      (playerState) => {
+        this.iso.goto({
+          x: playerState.position.x,
+          y: playerState.position.y,
+          z: 0,
+        });
+
+        this.path = playerState.path;
+
+        if (playerState.name !== this.badge.text) {
+          this.badge.setText(playerState.name);
+        }
+      }
+    );
+    this.on(Phaser.GameObjects.Events.DESTROY, () => {
+      this.badge.destroy();
+      unsub();
+    });
   }
 
   public update() {
