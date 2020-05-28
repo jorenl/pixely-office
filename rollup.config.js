@@ -7,7 +7,7 @@ import typescript from "rollup-plugin-typescript2";
 export default {
   input: ["./client/index.tsx"],
 
-  external: ["react", "react-dom", "phaser"],
+  external: ["react", "react-dom", "phaser", "peerjs"],
 
   output: {
     file: "./public/dist/bundle.js",
@@ -18,6 +18,7 @@ export default {
       react: "React",
       "react-dom": "ReactDOM",
       phaser: "Phaser",
+      peerjs: "Peer",
     },
     intro: "var global = window;",
   },
@@ -46,6 +47,12 @@ export default {
         "node_modules/phaser/src/polyfills/requestAnimationFrame.js",
         "node_modules/symbol-observable/es/*.js",
       ],
+      namedExports: {
+        "node_modules/react-is/index.js": [
+          "isValidElementType",
+          "isContextConsumer",
+        ],
+      },
       sourceMap: true,
       ignoreGlobal: true,
     }),

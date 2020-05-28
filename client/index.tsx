@@ -1,11 +1,16 @@
 import React from "react";
 import ReactDOM from "react-dom";
+import { Provider } from "react-redux";
 
 import App from "./App";
 
-window.addEventListener('load', () => {
+import store from "./game/store";
+
+window.addEventListener("load", () => {
   ReactDOM.render(
-    <App />,
+    <Provider store={store}>
+      <App />
+    </Provider>,
     document.getElementById("root")
   );
-})
+});

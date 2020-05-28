@@ -3,19 +3,30 @@ import express = require("express");
 import expressWs = require("express-ws");
 import path from "path";
 import WebSocket from "ws";
+import { ExpressPeerServer } from "peerjs-server";
 
 import { Message } from "shared/websocket/messages";
 
 import { newStore } from "./store";
 import { RemovePlayerAction } from "shared/store/actions";
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
+// for now, let's just use a single store on startup...
+const store = newStore();
 
 const app = express();
 const ews = expressWs(app);
 
-// for now, let's just use a single store on startup...
-const store = newStore();
+const httpServer = app.listen(PORT, () => {
+  console.log(`Pixely office app listening at http://localhost:${PORT}`);
+});
+
+const peerServer = ExpressPeerServer(httpServer, {
+  debug: true,
+  path: "/app",
+});
+app.use("/peerjs", peerServer);
 
 app.use("/assets/", express.static(path.join(__dirname, "../public")));
 app.get("/", (req, res) => {
@@ -75,8 +86,4 @@ ews.app.ws("/ws", (ws, req) => {
     store.dispatch(action);
     broadcast({ type: "REDUX_ACTION", action });
   });
-});
-
-app.listen(PORT, () => {
-  console.log(`Example app listening at http://localhost:${PORT}`);
 });

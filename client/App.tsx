@@ -5,6 +5,8 @@ import GameComponent from "./game/GameComponent";
 import { dispatch, dispatchAndSend } from "./game/store";
 import { getWsConnection, OnMessageHandler, OnOpenHandler } from "./socket";
 
+import Streams from "./streams";
+
 const App = () => {
   const [show, setShow] = useState(false);
   const [name, setName] = useState<string>("");
@@ -41,7 +43,10 @@ const App = () => {
       <h1>It worked!</h1>
 
       {show ? (
-        <GameComponent />
+        <>
+          <GameComponent />
+          <Streams />
+        </>
       ) : (
         <div>
           <input

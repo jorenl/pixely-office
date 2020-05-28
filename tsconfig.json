@@ -4,7 +4,10 @@
     "jsx": "react",
     "baseUrl": "./",
     "sourceMap": true,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "paths": {
+      "peerjs-server": ["types/peerjs-server"]
+    }
   },
-  "include": ["server/**/*.ts*", "client/**/*.ts*"]
+  "include": ["server/**/*.ts*", "client/**/*.ts*", "shared/**/*.ts*"]
 }
