@@ -23,10 +23,19 @@ class Streams extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
 
+    const secure = window.location.protocol === "https:";
+    const port =
+      window.location.port === ""
+        ? secure
+          ? 443
+          : 80
+        : parseInt(window.location.port);
     this.peer = new Peer(props.localUid, {
       host: "/",
       path: "/peerjs/app",
       debug: 3,
+      secure,
+      port,
     });
   }
 

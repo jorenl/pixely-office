@@ -10,7 +10,8 @@ export class WsConnection {
   private onOpenHandlers: OnOpenHandler[] = [];
 
   constructor() {
-    this.ws = new WebSocket(`ws://${window.location.host}/ws`);
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    this.ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
     this.ws.onopen = this.handleOpen;
     this.ws.onmessage = this.handleMessage;
   }
