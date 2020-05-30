@@ -2,8 +2,9 @@ require("tsconfig-paths/register");
 import express = require("express");
 import expressWs = require("express-ws");
 import path from "path";
+import url = require("url");
 import WebSocket from "ws";
-import { ExpressPeerServer } from "peerjs-server";
+import { ExpressPeerServer } from "peer";
 
 import { Message } from "shared/websocket/messages";
 
@@ -16,26 +17,49 @@ const PORT = process.env.PORT || 3000;
 const store = newStore();
 
 const app = express();
-const ews = expressWs(app);
 
 const httpServer = app.listen(PORT, () => {
   console.log(`Pixely office app listening at http://localhost:${PORT}`);
 });
 
-const peerServer = ExpressPeerServer(httpServer, {
-  debug: true,
-  path: "/app",
+const PEER_WSS_PATH = "/peer/app/peerjs";
+const GAME_WSS_PATH = "/ws";
+const peerWss = new WebSocket.Server({
+  path: PEER_WSS_PATH,
+  noServer: true,
 });
-app.use("/peerjs", peerServer);
+const gameWss = new WebSocket.Server({ path: GAME_WSS_PATH, noServer: true });
+
+// Handle muxing the peerjs and game events web socket servers
+httpServer.on("upgrade", (request, socket, head) => {
+  const pathname = url.parse(request.url).pathname;
+
+  if (pathname === PEER_WSS_PATH) {
+    peerWss.handleUpgrade(request, socket, head, (ws) => {
+      peerWss.emit("connection", ws, request);
+    });
+  } else if (pathname === GAME_WSS_PATH) {
+    gameWss.handleUpgrade(request, socket, head, (ws) => {
+      gameWss.emit("connection", ws, request);
+    });
+  } else {
+    console.error("Destroying socket");
+    socket.destroy();
+  }
+});
+
+const peerServer = ExpressPeerServer(httpServer, {
+  path: "/app",
+  wss: peerWss,
+});
+app.use("/peer", peerServer);
 
 app.use("/assets/", express.static(path.join(__dirname, "../public")));
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../public/index.htm"));
 });
 
-ews.app.ws("/ws", (ws, req) => {
-  const server = ews.getWss();
-
+gameWss.on("connection", (ws) => {
   let playerUid: string;
 
   function send(message: Message) {
@@ -43,7 +67,7 @@ ews.app.ws("/ws", (ws, req) => {
   }
 
   function broadcast(message: Message) {
-    server.clients.forEach((client) => {
+    gameWss.clients.forEach((client) => {
       if (client !== ws && client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify(message));
       }

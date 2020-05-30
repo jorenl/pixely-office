@@ -5,7 +5,7 @@ import GameComponent from "./game/GameComponent";
 import { dispatch, dispatchAndSend } from "./game/store";
 import { getWsConnection, OnMessageHandler, OnOpenHandler } from "./socket";
 
-import Streams from "./streams";
+import { useStreamManager } from "./streams";
 
 const App = () => {
   const [show, setShow] = useState(false);
@@ -31,6 +31,9 @@ const App = () => {
     return cleanup;
   });
 
+  // Add stream manager to handle audio calls
+  useStreamManager(show);
+
   const joinGame = () => {
     const uid = uuid();
     dispatchAndSend({ type: "ADD_PLAYER", name, uid, x: 1008, y: 1200 });
@@ -45,7 +48,6 @@ const App = () => {
       {show ? (
         <>
           <GameComponent />
-          <Streams />
         </>
       ) : (
         <div>

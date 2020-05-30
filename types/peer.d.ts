@@ -1,10 +1,11 @@
-declare module "peerjs-server" {
+declare module "idfghisdfghduibdf" {
+  import WebSocket from "ws";
   import { Server } from "http";
   import { RequestHandler } from "express";
 
   interface ExpressPeerServerConfig {
-    debug: boolean;
     path: string;
+    wss: WebSocket.Server;
   }
 
   export function ExpressPeerServer(
