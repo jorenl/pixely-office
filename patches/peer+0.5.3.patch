@@ -1,0 +1,21 @@
+--- a/node_modules/peer/dist/src/services/webSocketServer/index.js
++++ b/node_modules/peer/dist/src/services/webSocketServer/index.js
+@@ -17,7 +17,7 @@ class WebSocketServer extends events_1.default {
+         this.config = config;
+         const path = this.config.path;
+         this.path = `${path}${path.endsWith('/') ? "" : "/"}${WS_PATH}`;
+-        this.socketServer = new ws_1.default.Server({ path: this.path, server });
++        this.socketServer = this.config.wss || new ws_1.default.Server({ path: this.path, server });
+         this.socketServer.on("connection", (socket, req) => this._onSocketConnection(socket, req));
+         this.socketServer.on("error", (error) => this._onSocketError(error));
+     }
+--- a/node_modules/peer/index.d.ts
++++ b/node_modules/peer/index.d.ts
+@@ -26,6 +26,7 @@ declare interface IConfig {
+     cert: string;
+   };
+   readonly generateClientId?: () => string;
++  readonly wss?: WebSocketLib.Server;
+ }
+ 
+ declare interface IClient {
