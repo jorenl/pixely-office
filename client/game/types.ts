@@ -33,6 +33,7 @@ export interface TiledJSONMapLayer {
   width: number;
   x: number;
   y: number;
+  offsety?: number;
 }
 
 export interface TiledJSONMapTileset {

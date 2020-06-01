@@ -157,8 +157,7 @@ export default class Demo extends Phaser.Scene {
     range(0, map.width).map((x) => {
       range(0, map.height).map((y) => {
         map.layers.map((layer) => {
-          var tx = (x - y) * (tileWidth / 2);
-          var ty = (x + y) * (tileHeight / 2);
+          const z = -(layer.offsety || 0) * PX_SCALE;
 
           if (
             x >= layer.x &&
@@ -175,6 +174,7 @@ export default class Demo extends Phaser.Scene {
                 this,
                 x * TILE * PX_SCALE,
                 y * TILE * PX_SCALE,
+                z,
                 `tile-${tileDef.image}`,
                 depthOffset
               );
